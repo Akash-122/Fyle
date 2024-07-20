@@ -27,7 +27,7 @@ export class UserComponent implements OnInit {
     name: "",
     workouttypes: '',
     workoutMinutes: 0
-  }
+  };
 
   searchName: string = '';
   selectedWorkoutType: string = '';
@@ -48,15 +48,20 @@ export class UserComponent implements OnInit {
   workouttypes: string[] = ["Cycling", "Running", "Walking", "Playing", "Sleeping"];
 
   getUserList() {
-    this._userService.getUsers().subscribe((res) => {
-      this.userList = res;
-      this.aggregateUserData();
-    });
+    this._userService.getUsers().subscribe(
+      (res) => {
+        this.userList = res;
+        this.aggregateUserData();
+      },
+      (error) => {
+        this._toastrService.error('Failed to fetch user list', 'Error');
+      }
+    );
   }
 
   aggregateUserData() {
     const userMap = new Map<string, any>();
-  
+
     this.userList.forEach(user => {
       if (userMap.has(user.name)) {
         const existingUser = userMap.get(user.name);
@@ -71,20 +76,19 @@ export class UserComponent implements OnInit {
         });
       }
     });
-  
+
     // Update number of workouts based on distinct workout types
     this.aggregatedUserList = Array.from(userMap.values()).map(user => ({
       ...user,
       numberOfWorkouts: user.workouttypes.split(', ').length // Count distinct workout types
     }));
-  
+
     this.filterAndSearch(); // Apply filter and search after data aggregation
   }
-  
 
   filterAndSearch() {
     this.filteredUserList = this.aggregatedUserList
-      .filter(user => 
+      .filter(user =>
         (this.selectedWorkoutType === '' || user.workouttypes.split(', ').includes(this.selectedWorkoutType)) &&
         (this.searchName === '' || user.name.toLowerCase().includes(this.searchName.toLowerCase()))
       );
@@ -166,11 +170,20 @@ export class UserComponent implements OnInit {
   }
 
   onSubmit(form: NgForm): void {
-    this._userService.addUser(this.user).subscribe((res) => {
-      this.getUserList();
-      form.reset();
-      this._toastrService.success('User added Successfully', 'Success');
-    });
+    if (form.valid) {
+      this._userService.addUser(this.user).subscribe(
+        (res) => {
+          this.getUserList();
+          form.reset();
+          this._toastrService.success('User added successfully', 'Success');
+        },
+        (error) => {
+          this._toastrService.error('Failed to add user', 'Error');
+        }
+      );
+    } else {
+      this._toastrService.error('Form is invalid', 'Error');
+    }
   }
 
   onResetForm() {
@@ -181,7 +194,7 @@ export class UserComponent implements OnInit {
     };
     this.searchName = ''; // Reset search input
     this.selectedWorkoutType = ''; // Reset filter dropdown
-    this.filteredUserList = this.aggregatedUserList; // Reset to show all data
+    this.filteredUserList = [...this.aggregatedUserList]; // Reset to show all data
     if (this.chart) {
       this.chart.destroy();
     }
